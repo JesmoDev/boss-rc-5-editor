@@ -4,14 +4,22 @@ import { MUIComponent } from "./component";
 import { FileManager } from "./fileManager";
 import { repeat } from "lit/directives/repeat.js";
 
+type Mem = {
+  mem: Element;
+  file?: {
+    name: string;
+    file: File;
+  };
+};
+
 @customElement("mui-editor")
 export class MuiEditor extends MUIComponent {
   @property({ attribute: false }) fileHandle?: FileSystemFileHandle;
   @property({ attribute: false }) directoryHandle?: FileSystemDirectoryHandle;
   @property({ attribute: false }) xmlDoc?: Document;
-  @property({ attribute: false }) mems?: NodeListOf<Element>;
+  @property({ attribute: false }) mems: Mem[] = [];
 
-  onOpenFile = async () => {
+  onOpenFolder = async () => {
     const { directoryHandle, handle, content } = await FileManager.openFile();
 
     if (!handle || !content) {
@@ -22,8 +30,36 @@ export class MuiEditor extends MUIComponent {
     this.fileHandle = handle;
     const parser = new DOMParser();
     this.xmlDoc = parser.parseFromString(content, "application/xml");
-    this.mems = this.xmlDoc.querySelectorAll("mem");
+
+    if (!directoryHandle) return;
+
+    const mems = Array.from(this.xmlDoc.querySelectorAll("mem")).map(async (mem, index) => {
+      // Get the correct folder handle using navigateToSubfolders
+      const fileFolderHandle = await this.navigateToSubfolders(directoryHandle, [`wave`, `${this.padNumber(index + 1)}_1`]);
+
+      if (!fileFolderHandle) {
+        console.error("Failed to navigate to subfolders.");
+        return { mem };
+      }
+
+      const file = (await fileFolderHandle.values().next()).value as File;
+
+      if (file) console.log(Number.parseInt(mem.getAttribute("id") ?? "") + 1, file?.name); // Print the name of the first file in the folder
+
+      // Fill out the file object with the name and the actual file
+      return {
+        mem,
+        file: file ? { name: file.name, file: file } : undefined,
+      };
+    });
+
+    // Wait for all the promises to resolve before continuing
+    this.mems = await Promise.all(mems);
   };
+
+  padNumber(num: number) {
+    return num.toString().padStart(3, "0");
+  }
 
   updateMemName = (mem: Element, name: String) => {
     const nameElement = mem.querySelector("NAME");
@@ -62,7 +98,7 @@ export class MuiEditor extends MUIComponent {
       return;
     }
 
-    this.updateMemName(this.mems[0], newName);
+    this.updateMemName(this.mems[0].mem, newName);
   };
 
   onFileChange = async (event: Event) => {
@@ -100,7 +136,6 @@ export class MuiEditor extends MUIComponent {
       try {
         // Navigate to the next folder in the path
         currentDirectory = await currentDirectory.getDirectoryHandle(folder);
-        console.log(`Found directory: ${folder}`);
       } catch (error) {
         console.error(`Failed to find directory: ${folder}`, error);
         return null; // If any folder in the path doesn't exist, stop
@@ -123,6 +158,29 @@ export class MuiEditor extends MUIComponent {
     return chars.join("");
   }
 
+  onRemoveFile = async (mem: Mem, index: number) => {
+    if (!this.directoryHandle) return;
+
+    const folderHandle = await this.navigateToSubfolders(this.directoryHandle, [`wave`, `${this.padNumber(index + 1)}_1`]);
+    if (!folderHandle || !mem.file) return;
+    folderHandle.removeEntry(mem.file.name, { recursive: false });
+    console.log(`Removed file: ${mem.file.name} from folder: ${folderHandle.name}`);
+  };
+
+  renderInput(mem: Mem, index: number) {
+    const name = this.xmlNameToString(mem.mem.firstElementChild);
+    return html`
+      <div class="inputContainer">
+        <input id="mem-${index}" type="text" value="${name}" @input="${this.onNameChange}" />
+        <div class="dropZoneContainer">
+          <label for="file-${index}">${mem.file ? html`<p>${mem.file.name}</p>` : ""}</label>
+          <input id="file-${index}" type="file" @change="${this.onFileChange}" />
+        </div>
+        <button @click=${() => this.onRemoveFile(mem, index)}>Remove</button>
+      </div>
+    `;
+  }
+
   renderInputs() {
     if (!this.mems || this.mems.length === 0) {
       return html`<p>No memory elements available.</p>`;
@@ -130,14 +188,8 @@ export class MuiEditor extends MUIComponent {
     return html`
       ${repeat(
         this.mems,
-        (mem) => mem.getAttribute("id"),
-        (mem, index) => html`
-          <div>
-            <label for="mem-${index}">${index}</label>
-            <input id="mem-${index}" type="text" value="${this.xmlNameToString(mem.firstElementChild)}" @input="${this.onNameChange}" />
-            <input type="file" id="file-${index}" @input="${this.onFileChange}" />
-          </div>
-        `
+        (mem) => mem.mem.getAttribute("id"),
+        (mem, index) => this.renderInput(mem, index)
       )}
     `;
   }
@@ -145,7 +197,7 @@ export class MuiEditor extends MUIComponent {
   // Render method to define the component's HTML structure
   render() {
     return html`
-      <button @click="${this.onOpenFile}">Open MEMORY1.RC0</button>
+      <button @click="${this.onOpenFolder}">Open MEMORY1.RC0</button>
       ${this.renderInputs()}
       <button @click="${this.onSave}">Save</button>
     `;
@@ -161,11 +213,21 @@ export class MuiEditor extends MUIComponent {
       width: 100%;
       height: 100%;
     }
-    textarea {
-      width: 100%;
-      height: 100%;
-      font-family: monospace;
-      resize: none;
+    .dropZoneContainer {
+      position: relative;
+      &:focus-within {
+        outline: 2px solid white;
+      }
+      & > label {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      & > input {
+        pointer-events: none;
+        opacity: 0;
+        position: absolute;
+      }
     }
   `;
 }

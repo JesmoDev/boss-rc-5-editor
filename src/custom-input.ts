@@ -1,12 +1,12 @@
-import { css, html } from "lit";
+import { css, html, nothing, PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { MUIComponent } from "./component";
 
 @customElement("custom-input")
 export class CustomInput extends MUIComponent {
-  @property({ type: String }) value = ""; // Define a property to hold the input value
-
-  @state() private modifiedValue = ""; // State to hold the modified value for rendering
+  @property({ type: String }) value = "";
+  @state() private modifiedValue = "";
+  @state() private isInit = false;
 
   onInput = (event: Event) => {
     const target = event.target as HTMLTextAreaElement;
@@ -16,11 +16,28 @@ export class CustomInput extends MUIComponent {
     this.value = value.replace(/\u00A0/g, " ");
 
     // For rendering, replace spaces with invisible characters
-    this.modifiedValue = value.replace(/ /g, "\u00A0");
+    this.setModifiedValue(value);
   };
 
+  // Helper function to set the modified value
+  private setModifiedValue(value: string) {
+    // Replace regular spaces with No-Break Space (NBSP) for the rendered value
+    this.modifiedValue = value.replace(/ /g, "\u00A0");
+  }
+
+  protected willUpdate(_changedProperties: PropertyValues): void {
+    super.willUpdate(_changedProperties);
+
+    if (!this.isInit) {
+      this.isInit = true;
+      this.value = this.value.trim();
+      this.setModifiedValue(this.value);
+    }
+  }
+
   render() {
-    return html` <textarea maxlength="12" @input=${this.onInput} .value=${this.modifiedValue}></textarea> `;
+    if (!this.value) return nothing;
+    return html`<textarea maxlength="12" @input=${this.onInput} .value=${this.modifiedValue}></textarea>`;
   }
 
   static styles = css`

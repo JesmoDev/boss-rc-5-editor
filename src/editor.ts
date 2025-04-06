@@ -3,6 +3,7 @@ import { customElement, property } from "lit/decorators.js";
 import { MUIComponent } from "./component";
 import { FileManager } from "./fileManager";
 import { repeat } from "lit/directives/repeat.js";
+import "./custom-input"; // Import the custom input component
 
 type Mem = {
   mem: Element;
@@ -96,6 +97,7 @@ export class MuiEditor extends MUIComponent {
   onNameChange = (event: Event, mem: Mem) => {
     const target = event.target as HTMLInputElement;
     const newName = target.value;
+    console.log("Name changed", newName);
 
     if (!mem) {
       console.error("No memory element available.");
@@ -190,7 +192,7 @@ export class MuiEditor extends MUIComponent {
     const name = this.xmlNameToString(mem.mem.firstElementChild);
     return html`
       <div class="inputContainer">
-        <input id="mem-${index}" type="text" value="${name}" @input="${(e: Event) => this.onNameChange(e, mem)}" />
+        <custom-input id="mem-${index}" value="${name}" @input="${(e: Event) => this.onNameChange(e, mem)}"></custom-input>
         <div class="dropZoneContainer">
           <label for="file-${index}">${mem.file ? mem.file.name : ""}</label>
           <input id="file-${index}" type="file" @change="${this.onFileChange}" @drop=${this.onDrop} />
@@ -232,7 +234,7 @@ export class MuiEditor extends MUIComponent {
   // Render method to define the component's HTML structure
   render() {
     return html`
-      <button @click="${this.onOpenFolder}">Open MEMORY1.RC0</button>
+      <button @click="${this.onOpenFolder}">Open Roland Folder</button>
       ${this.renderInputs()}
       <button @click="${this.onSave}">Save</button>
     `;

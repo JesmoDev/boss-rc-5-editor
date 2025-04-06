@@ -124,9 +124,10 @@ export class MuiEditor extends MUIComponent {
     const folderHandle = await this.navigateToSubfolders(this.directoryHandle, [`wave`, `${this.padNumber(index + 1)}_1`]);
 
     if (!folderHandle) {
-      console.error(`Folder ${folderName} not found.`);
+      console.error("Failed to navigate to subfolders.");
       return;
     }
+
     // Remove any old files in the folder
     this.onRemoveFile(this.mems[index], index);
 

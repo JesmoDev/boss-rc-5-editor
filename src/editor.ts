@@ -121,8 +121,7 @@ export class MuiEditor extends MUIComponent {
     }
 
     const index = parseInt(target.id.split("-")[1]);
-    const folderName = `wave/00${index + 1}_1`;
-    const folderHandle = await this.navigateToSubfolders(this.directoryHandle, folderName.split("/"));
+    const folderHandle = await this.navigateToSubfolders(this.directoryHandle, [`wave`, `${this.padNumber(index + 1)}_1`]);
 
     if (!folderHandle) {
       console.error(`Folder ${folderName} not found.`);

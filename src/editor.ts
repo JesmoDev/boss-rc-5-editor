@@ -14,20 +14,22 @@ type Mem = {
 
 @customElement("mui-editor")
 export class MuiEditor extends MUIComponent {
-  @property({ attribute: false }) fileHandle?: FileSystemFileHandle;
+  @property({ attribute: false }) memory01Handle?: FileSystemFileHandle;
+  @property({ attribute: false }) memory02Handle?: FileSystemFileHandle;
   @property({ attribute: false }) directoryHandle?: FileSystemDirectoryHandle;
   @property({ attribute: false }) xmlDoc?: Document;
   @property({ attribute: false }) mems: Mem[] = [];
 
   onOpenFolder = async () => {
-    const { directoryHandle, handle, content } = await FileManager.openFile();
+    const { directoryHandle, memory01Handle, memory02Handle, content } = await FileManager.openFile();
 
-    if (!handle || !content) {
+    if (!memory01Handle || !content) {
       console.error("Failed to open file or read content.");
       return;
     }
     this.directoryHandle = directoryHandle;
-    this.fileHandle = handle;
+    this.memory01Handle = memory01Handle;
+    this.memory02Handle = memory02Handle;
     const parser = new DOMParser();
     this.xmlDoc = parser.parseFromString(content, "application/xml");
 
@@ -75,7 +77,7 @@ export class MuiEditor extends MUIComponent {
     }
   };
   onSave = () => {
-    if (!this.fileHandle || !this.xmlDoc) {
+    if (!this.memory01Handle || !this.xmlDoc || !this.memory02Handle) {
       console.error("No file handle or XML document available for saving.");
       return;
     }
@@ -86,19 +88,21 @@ export class MuiEditor extends MUIComponent {
     const serializer = new XMLSerializer();
     const xmlString = serializer.serializeToString(this.xmlDoc);
 
-    FileManager.saveFile(this.fileHandle, xmlString);
+    // Also open file
+    FileManager.saveFile(this.memory01Handle, xmlString);
+    FileManager.saveFile(this.memory02Handle, xmlString);
   };
 
-  onNameChange = (event: Event) => {
+  onNameChange = (event: Event, mem: Mem) => {
     const target = event.target as HTMLInputElement;
     const newName = target.value;
 
-    if (!this.mems || this.mems.length === 0) {
-      console.error("No memory elements available.");
+    if (!mem) {
+      console.error("No memory element available.");
       return;
     }
 
-    this.updateMemName(this.mems[0].mem, newName);
+    this.updateMemName(mem.mem, newName);
   };
 
   onFileChange = async (event: Event) => {
@@ -122,6 +126,8 @@ export class MuiEditor extends MUIComponent {
       console.error(`Folder ${folderName} not found.`);
       return;
     }
+    // Remove any old files in the folder
+    this.onRemoveFile(this.mems[index], index);
 
     const fileHandle = await folderHandle.getFileHandle(file.name, { create: true });
     const writableStream = await fileHandle.createWritable();
@@ -184,7 +190,7 @@ export class MuiEditor extends MUIComponent {
     const name = this.xmlNameToString(mem.mem.firstElementChild);
     return html`
       <div class="inputContainer">
-        <input id="mem-${index}" type="text" value="${name}" @input="${this.onNameChange}" />
+        <input id="mem-${index}" type="text" value="${name}" @input="${(e: Event) => this.onNameChange(e, mem)}" />
         <div class="dropZoneContainer">
           <label for="file-${index}">${mem.file ? mem.file.name : ""}</label>
           <input id="file-${index}" type="file" @change="${this.onFileChange}" @drop=${this.onDrop} />
@@ -208,7 +214,6 @@ export class MuiEditor extends MUIComponent {
   }
 
   onDrop = (e: DragEvent) => {
-    console.log("Drop event triggered");
     e.preventDefault();
 
     const target = e.target as HTMLInputElement;

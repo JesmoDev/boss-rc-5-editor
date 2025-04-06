@@ -2,7 +2,8 @@ export class FileManager {
   // Static method to open a file
   static async openFile(): Promise<{
     directoryHandle?: FileSystemDirectoryHandle;
-    handle?: FileSystemFileHandle;
+    memory01Handle?: FileSystemFileHandle;
+    memory02Handle?: FileSystemFileHandle;
     file?: File;
     content?: string;
   }> {
@@ -14,14 +15,16 @@ export class FileManager {
       const dataFolderHandle = await directoryHandle.getDirectoryHandle("data");
 
       // Access the 'MEMORY1.RC0' file inside the 'data' folder
-      const fileHandle = await dataFolderHandle.getFileHandle("MEMORY1.RC0");
+      const memory01Handle = await dataFolderHandle.getFileHandle("MEMORY1.RC0");
+      const memory02Handle = await dataFolderHandle.getFileHandle("MEMORY2.RC0");
 
-      const file = await fileHandle.getFile();
+      const file = await memory01Handle.getFile();
       const fileContent = await file.text(); // Read the file content as text
 
       return {
         directoryHandle: directoryHandle,
-        handle: fileHandle,
+        memory01Handle: memory01Handle,
+        memory02Handle: memory02Handle,
         file: file,
         content: fileContent,
       };

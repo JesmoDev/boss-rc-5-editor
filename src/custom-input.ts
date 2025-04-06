@@ -6,22 +6,21 @@ import { MUIComponent } from "./component";
 export class CustomInput extends MUIComponent {
   @property({ type: String }) value = ""; // Define a property to hold the input value
 
-  @state() private modifiedValue = ""; // State to hold the modified value
+  @state() private modifiedValue = ""; // State to hold the modified value for rendering
 
   onInput = (event: Event) => {
-    const target = event.target as HTMLInputElement;
+    const target = event.target as HTMLTextAreaElement;
     let value = target.value;
 
-    const maxLength = target.getAttribute("maxlength");
-    if (maxLength && value.length > parseInt(maxLength)) {
-      value = value.slice(0, parseInt(maxLength));
-    }
+    // The actual value should remain unchanged
+    this.value = value.replace(/\u00A0/g, " ");
 
-    this.value = value;
+    // For rendering, replace spaces with invisible characters
+    this.modifiedValue = value.replace(/ /g, "\u00A0");
   };
 
   render() {
-    return html`<textarea maxlength="12" @input=${this.onInput} value=${this.modifiedValue}></textarea>`;
+    return html` <textarea maxlength="12" @input=${this.onInput} .value=${this.modifiedValue}></textarea> `;
   }
 
   static styles = css`

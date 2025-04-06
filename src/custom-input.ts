@@ -36,7 +36,6 @@ export class CustomInput extends MUIComponent {
   }
 
   render() {
-    if (!this.value) return nothing;
     return html`<textarea maxlength="12" @input=${this.onInput} .value=${this.modifiedValue}></textarea>`;
   }
 

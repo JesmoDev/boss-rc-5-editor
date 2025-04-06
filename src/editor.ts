@@ -187,7 +187,7 @@ export class MuiEditor extends MUIComponent {
         <input id="mem-${index}" type="text" value="${name}" @input="${this.onNameChange}" />
         <div class="dropZoneContainer">
           <label for="file-${index}">${mem.file ? mem.file.name : ""}</label>
-          <input id="file-${index}" type="file" @change="${this.onFileChange}" />
+          <input id="file-${index}" type="file" @change="${this.onFileChange}" @drop=${this.onDrop} />
         </div>
         <button @click=${() => this.onRemoveFile(mem, index)}>Remove</button>
       </div>
@@ -207,9 +207,25 @@ export class MuiEditor extends MUIComponent {
     `;
   }
 
+  onDrop = (e: DragEvent) => {
+    console.log("Drop event triggered");
+    e.preventDefault();
+
+    const target = e.target as HTMLInputElement;
+    if (!e.dataTransfer || !target) return;
+
+    const file = e.dataTransfer.files.item(0);
+    if (!file) return;
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file); // Add the first file
+
+    target.files = dataTransfer.files;
+    this.onFileChange(e);
+  };
+
   // Render method to define the component's HTML structure
   render() {
-    console.log("Rendering editor component", this.mems[0]);
     return html`
       <button @click="${this.onOpenFolder}">Open MEMORY1.RC0</button>
       ${this.renderInputs()}
@@ -248,10 +264,17 @@ export class MuiEditor extends MUIComponent {
       &:focus-within {
         outline: 2px solid white;
       }
-      & > input {
+
+      & > label {
         pointer-events: none;
+      }
+
+      & > input {
         opacity: 0;
         position: absolute;
+        inset: 0;
+        padding: 0;
+        border: none;
       }
     }
   `;

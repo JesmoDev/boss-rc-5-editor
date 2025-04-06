@@ -127,6 +127,10 @@ export class MuiEditor extends MUIComponent {
     const writableStream = await fileHandle.createWritable();
     await writableStream.write(file);
     await writableStream.close();
+
+    // Update the mems array with the new file information
+    this.mems[index].file = { name: file.name, file: file };
+    this.requestUpdate("mems");
   };
 
   async navigateToSubfolders(directoryHandle: FileSystemDirectoryHandle, pathArray: string[]): Promise<FileSystemDirectoryHandle | null> {
@@ -164,7 +168,16 @@ export class MuiEditor extends MUIComponent {
     const folderHandle = await this.navigateToSubfolders(this.directoryHandle, [`wave`, `${this.padNumber(index + 1)}_1`]);
     if (!folderHandle || !mem.file) return;
     folderHandle.removeEntry(mem.file.name, { recursive: false });
-    console.log(`Removed file: ${mem.file.name} from folder: ${folderHandle.name}`);
+    this.mems[index].file = undefined;
+
+    // Clear the file input
+    if (this.shadowRoot) {
+      const fileInput = this.shadowRoot.getElementById(`file-${index}`) as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = "";
+      }
+    }
+    this.requestUpdate("mems");
   };
 
   renderInput(mem: Mem, index: number) {
@@ -173,7 +186,7 @@ export class MuiEditor extends MUIComponent {
       <div class="inputContainer">
         <input id="mem-${index}" type="text" value="${name}" @input="${this.onNameChange}" />
         <div class="dropZoneContainer">
-          <label for="file-${index}">${mem.file ? html`<p>${mem.file.name}</p>` : ""}</label>
+          <label for="file-${index}">${mem.file ? mem.file.name : ""}</label>
           <input id="file-${index}" type="file" @change="${this.onFileChange}" />
         </div>
         <button @click=${() => this.onRemoveFile(mem, index)}>Remove</button>
@@ -196,6 +209,7 @@ export class MuiEditor extends MUIComponent {
 
   // Render method to define the component's HTML structure
   render() {
+    console.log("Rendering editor component", this.mems[0]);
     return html`
       <button @click="${this.onOpenFolder}">Open MEMORY1.RC0</button>
       ${this.renderInputs()}
@@ -213,15 +227,26 @@ export class MuiEditor extends MUIComponent {
       width: 100%;
       height: 100%;
     }
+    .inputContainer {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      align-items: center;
+    }
+    input,
+    .dropZoneContainer > label {
+      display: flex;
+      padding-inline: 12px;
+      height: 100%;
+      align-items: center;
+    }
     .dropZoneContainer {
       position: relative;
+      width: 100%;
+      border: 1px solid var(--color-border);
+      height: 40px;
       &:focus-within {
         outline: 2px solid white;
-      }
-      & > label {
-        display: block;
-        width: 100%;
-        height: 100%;
       }
       & > input {
         pointer-events: none;

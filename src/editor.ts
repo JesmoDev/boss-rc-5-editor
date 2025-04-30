@@ -4,6 +4,7 @@ import { MUIComponent } from "./component";
 import { FileManager } from "./fileManager";
 import { repeat } from "lit/directives/repeat.js";
 import "./custom-input"; // Import the custom input component
+import { padNumber, xmlNameToString } from "./utils";
 
 type TrackElement = {
   element: Element;
@@ -38,10 +39,6 @@ export class MuiEditor extends MUIComponent {
     this.tracks = await FileManager.getTracks(this.xmlDoc, directoryHandle);
   };
 
-  padNumber(num: number) {
-    return num.toString().padStart(3, "0");
-  }
-
   updateTrackName = (mem: Element, name: String) => {
     const nameElement = mem.querySelector("NAME");
 
@@ -55,6 +52,7 @@ export class MuiEditor extends MUIComponent {
       nameCharElements[i].textContent = charCode.toString();
     }
   };
+
   onSave = () => {
     if (!this.memory01Handle || !this.xmlDoc || !this.memory02Handle) {
       console.error("No file handle or XML document available for saving.");
@@ -99,7 +97,7 @@ export class MuiEditor extends MUIComponent {
     }
 
     const index = parseInt(target.id.split("-")[1]);
-    const folderHandle = await this.navigateToSubfolders(this.directoryHandle, [`wave`, `${this.padNumber(index + 1)}_1`]);
+    const folderHandle = await FileManager.navigateToSubfolders(this.directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);
 
     if (!folderHandle) {
       console.error("Failed to navigate to subfolders.");
@@ -119,39 +117,10 @@ export class MuiEditor extends MUIComponent {
     this.requestUpdate("mems");
   };
 
-  async navigateToSubfolders(directoryHandle: FileSystemDirectoryHandle, pathArray: string[]): Promise<FileSystemDirectoryHandle | null> {
-    let currentDirectory = directoryHandle;
-
-    for (let folder of pathArray) {
-      try {
-        // Navigate to the next folder in the path
-        currentDirectory = await currentDirectory.getDirectoryHandle(folder);
-      } catch (error) {
-        console.error(`Failed to find directory: ${folder}`, error);
-        return null; // If any folder in the path doesn't exist, stop
-      }
-    }
-
-    // Return the handle of the final subfolder
-    return currentDirectory;
-  }
-
-  xmlNameToString(element: Element | null): string {
-    const children = element?.children;
-    if (!children) return "";
-
-    const chars: string[] = [];
-    for (let i = 0; i < children.length; i++) {
-      const charCode = parseInt(children[i].textContent || "0");
-      chars.push(String.fromCharCode(charCode)); // Convert ASCII code to character
-    }
-    return chars.join("");
-  }
-
   onRemoveFile = async (mem: TrackElement, index: number) => {
     if (!this.directoryHandle) return;
 
-    const folderHandle = await this.navigateToSubfolders(this.directoryHandle, [`wave`, `${this.padNumber(index + 1)}_1`]);
+    const folderHandle = await FileManager.navigateToSubfolders(this.directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);
     if (!folderHandle || !mem.file) return;
     folderHandle.removeEntry(mem.file.name, { recursive: false });
     this.tracks[index].file = undefined;
@@ -167,7 +136,7 @@ export class MuiEditor extends MUIComponent {
   };
 
   renderInput(mem: TrackElement, index: number) {
-    const name = this.xmlNameToString(mem.element.firstElementChild);
+    const name = xmlNameToString(mem.element.firstElementChild);
     return html`
       <div class="inputContainer">
         <custom-input id="mem-${index}" value="${name}" @input="${(e: Event) => this.onNameChange(e, mem)}"></custom-input>

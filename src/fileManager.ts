@@ -1,3 +1,4 @@
+import { Track } from "./types";
 import { padNumber } from "./utils";
 
 // Extend the Window interface to include showDirectoryPicker for TypeScript
@@ -75,7 +76,7 @@ export class FileManager {
     }
   }
 
-  static async getTracks(xmlDoc: Document, directoryHandle: FileSystemDirectoryHandle): Promise<{ element: Element; file?: { name: string; file: File } }[]> {
+  static async getTracks(xmlDoc: Document, directoryHandle: FileSystemDirectoryHandle): Promise<Track[]> {
     const mems = Array.from(xmlDoc.querySelectorAll("mem")).map(async (mem, index) => {
       // Get the correct folder handle using navigateToSubfolders
       const fileFolderHandle = await this.navigateToSubfolders(directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);

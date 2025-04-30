@@ -5,15 +5,7 @@ import { FileManager } from "./fileManager";
 import { repeat } from "lit/directives/repeat.js";
 import "./custom-input"; // Import the custom input component
 import { padNumber, xmlNameToString } from "./utils";
-
-type TrackElement = {
-  element: Element;
-  file?: {
-    name: string;
-    file: File;
-  };
-  fileChanged?: boolean;
-};
+import { Track } from "./types";
 
 @customElement("mui-editor")
 export class MuiEditor extends MUIComponent {
@@ -21,7 +13,7 @@ export class MuiEditor extends MUIComponent {
   @property({ attribute: false }) memory02Handle?: FileSystemFileHandle;
   @property({ attribute: false }) mainDirectory?: FileSystemDirectoryHandle;
   @property({ attribute: false }) xmlDoc?: Document;
-  @property({ attribute: false }) tracks: TrackElement[] = [];
+  @property({ attribute: false }) tracks: Track[] = [];
 
   onOpenFolder = async () => {
     const { directoryHandle, memory01Handle, memory02Handle, content } = await FileManager.openFile();
@@ -90,10 +82,9 @@ export class MuiEditor extends MUIComponent {
     });
   };
 
-  onNameChange = (event: Event, track: TrackElement) => {
+  onNameChange = (event: Event, track: Track) => {
     const target = event.target as HTMLInputElement;
     const newName = target.value;
-    console.log("Name changed", newName);
 
     if (!track) {
       console.error("No memory element available.");
@@ -140,13 +131,13 @@ export class MuiEditor extends MUIComponent {
     this.onFileChange(e);
   };
 
-  renderInput(mem: TrackElement, index: number) {
-    const name = xmlNameToString(mem.element.firstElementChild);
+  renderInput(track: Track, index: number) {
+    const name = xmlNameToString(track.element.firstElementChild);
     return html`
       <div class="inputContainer">
-        <custom-input id="mem-${index}" value="${name}" @input="${(e: Event) => this.onNameChange(e, mem)}"></custom-input>
+        <custom-input id="mem-${index}" value="${name}" @input="${(e: Event) => this.onNameChange(e, track)}"></custom-input>
         <div class="dropZoneContainer">
-          <label for="file-${index}">${mem.file ? mem.file.name : ""}</label>
+          <label for="file-${index}">${track.file ? track.file.name : ""}</label>
           <input id="file-${index}" type="file" @change="${this.onFileChange}" @drop=${this.onDrop} />
         </div>
         <button @click=${() => this.onRemoveFile(index)}>Remove</button>

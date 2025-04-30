@@ -201,6 +201,9 @@ export class MuiEditor extends MUIComponent {
       gap: 16px;
       width: 100%;
       align-items: center;
+      border: 1px solid black;
+      padding: 8px;
+      border-radius: 4px;
     }
     input,
     .dropZoneContainer > label {

@@ -88,8 +88,6 @@ export class FileManager {
 
       const file = (await (fileFolderHandle as any).values().next()).value as File;
 
-      if (file) console.log(Number.parseInt(mem.getAttribute("id") ?? "") + 1, file?.name); // Print the name of the first file in the folder
-
       // Fill out the file object with the name and the actual file
       return {
         element: mem,

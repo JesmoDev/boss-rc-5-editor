@@ -6,6 +6,8 @@ import { repeat } from "lit/directives/repeat.js";
 import "./custom-input"; // Import the custom input component
 import { padNumber, xmlNameToString } from "./utils";
 import { Track } from "./types";
+import "./sortable-container";
+import "./sortable-item";
 
 @customElement("mui-editor")
 export class MuiEditor extends MUIComponent {
@@ -160,6 +162,14 @@ export class MuiEditor extends MUIComponent {
 
   // Render method to define the component's HTML structure
   render() {
+    return html`
+      <sortable-container>
+        <sortable-item>One</sortable-item>
+        <sortable-item>Two</sortable-item>
+        <sortable-item>Three</sortable-item>
+        ${Array.from({ length: 96 }, (_, i) => html`<sortable-item>${i + 4}</sortable-item>`)}
+      </sortable-container>
+    `;
     if (!this.mainDirectory) {
       return html`<button @click="${this.onOpenFolder}">Open Roland Folder</button>`;
     }

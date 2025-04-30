@@ -19,7 +19,7 @@ type TrackElement = {
 export class MuiEditor extends MUIComponent {
   @property({ attribute: false }) memory01Handle?: FileSystemFileHandle;
   @property({ attribute: false }) memory02Handle?: FileSystemFileHandle;
-  @property({ attribute: false }) directoryHandle?: FileSystemDirectoryHandle;
+  @property({ attribute: false }) mainDirectory?: FileSystemDirectoryHandle;
   @property({ attribute: false }) xmlDoc?: Document;
   @property({ attribute: false }) tracks: TrackElement[] = [];
 
@@ -30,7 +30,7 @@ export class MuiEditor extends MUIComponent {
       console.error("Failed to open file or read content.");
       return;
     }
-    this.directoryHandle = directoryHandle;
+    this.mainDirectory = directoryHandle;
     this.memory01Handle = memory01Handle;
     this.memory02Handle = memory02Handle;
     this.xmlDoc = new DOMParser().parseFromString(content, "application/xml");
@@ -72,18 +72,18 @@ export class MuiEditor extends MUIComponent {
 
     // Save or remove track files if they have changed
     this.tracks.forEach(async (track, index) => {
-      if (!track.fileChanged || !this.directoryHandle) return;
+      if (!track.fileChanged || !this.mainDirectory) return;
 
       if (!track.file) {
         // Remove the first file in the folder
-        const folderHandle = await FileManager.navigateToSubfolders(this.directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);
+        const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
         if (!folderHandle) return;
         await FileManager.removeFilesInFolder(folderHandle);
       }
 
       if (track.file) {
         // Save the file in the folder
-        const folderHandle = await FileManager.navigateToSubfolders(this.directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);
+        const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
         if (!folderHandle) return;
         await FileManager.saveFileInFolder(folderHandle, track.file.name, track.file.file);
       }
@@ -169,8 +169,11 @@ export class MuiEditor extends MUIComponent {
 
   // Render method to define the component's HTML structure
   render() {
+    if (!this.mainDirectory) {
+      return html`<button @click="${this.onOpenFolder}">Open Roland Folder</button>`;
+    }
+
     return html`
-      <button @click="${this.onOpenFolder}">Open Roland Folder</button>
       ${this.renderInputs()}
       <button @click="${this.onSave}">Save</button>
     `;

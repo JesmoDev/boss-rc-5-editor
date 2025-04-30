@@ -7,7 +7,6 @@ import "./custom-input"; // Import the custom input component
 import { padNumber, xmlNameToString } from "./utils";
 import { Track } from "./types";
 import "./sortable-container";
-import "./sortable-item";
 
 @customElement("mui-editor")
 export class MuiEditor extends MUIComponent {
@@ -152,24 +151,26 @@ export class MuiEditor extends MUIComponent {
       return html`<p>No memory elements available.</p>`;
     }
     return html`
-      ${repeat(
-        this.tracks,
-        (track) => track.element.getAttribute("id"),
-        (track, index) => this.renderInput(track, index)
-      )}
+      <sortable-container>
+        ${repeat(
+          this.tracks,
+          (track) => track.element.getAttribute("id"),
+          (track, index) => this.renderInput(track, index)
+        )}
+      </sortable-container>
     `;
   }
 
   // Render method to define the component's HTML structure
   render() {
-    return html`
-      <sortable-container>
-        <sortable-item>One</sortable-item>
-        <sortable-item>Two</sortable-item>
-        <sortable-item>Three</sortable-item>
-        ${Array.from({ length: 96 }, (_, i) => html`<sortable-item>${i + 4}</sortable-item>`)}
-      </sortable-container>
-    `;
+    // return html`
+    //   <sortable-container>
+    //     <sortable-item>One</sortable-item>
+    //     <sortable-item>Two</sortable-item>
+    //     <sortable-item>Three</sortable-item>
+    //     ${Array.from({ length: 96 }, (_, i) => html`<sortable-item>${i + 4}</sortable-item>`)}
+    //   </sortable-container>
+    // `;
     if (!this.mainDirectory) {
       return html`<button @click="${this.onOpenFolder}">Open Roland Folder</button>`;
     }

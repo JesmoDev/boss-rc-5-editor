@@ -3,17 +3,17 @@ import { customElement, queryAssignedElements } from "lit/decorators.js";
 
 @customElement("sortable-container")
 export class SortableContainer extends LitElement {
-  @queryAssignedElements({ selector: "sortable-item" })
+  @queryAssignedElements()
   items!: HTMLElement[];
 
-  static styles = css`
-    :host {
-      display: block;
-      border: 2px dashed #aaa;
-      padding: 10px;
-      min-height: 100px;
-    }
-  `;
+  // static styles = css`
+  //   :host {
+  //     display: block;
+  //     border: 2px dashed #aaa;
+  //     padding: 10px;
+  //     min-height: 100px;
+  //   }
+  // `;
 
   private dragSrcEl: HTMLElement | null = null;
 
@@ -51,12 +51,14 @@ export class SortableContainer extends LitElement {
 
       item.addEventListener("dragstart", (e: DragEvent) => {
         this.dragSrcEl = item;
+        item.style.zIndex = "1000";
         item.setAttribute("dragging", "");
         e.dataTransfer?.setData("text/plain", "");
       });
 
       item.addEventListener("dragend", () => {
         item.removeAttribute("dragging");
+        item.style.zIndex = "";
       });
 
       item.addEventListener("dragover", (e: DragEvent) => {

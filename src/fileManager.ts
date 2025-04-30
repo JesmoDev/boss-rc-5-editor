@@ -44,7 +44,7 @@ export class FileManager {
   }
 
   // Static method to save a file
-  static async saveFile(fileHandle: FileSystemFileHandle, content: string): Promise<void> {
+  static async saveFile(fileHandle: FileSystemFileHandle, content: string | File) {
     try {
       // Create a writable stream to the existing file (this will overwrite it)
       const writableStream = await fileHandle.createWritable();
@@ -56,6 +56,22 @@ export class FileManager {
       await writableStream.close();
     } catch (error) {
       console.error("Error saving the file:", error);
+    }
+  }
+
+  static async saveFileInFolder(folderHandle: FileSystemDirectoryHandle, fileName: string, content: File) {
+    try {
+      // Create a writable stream to the new file
+      const fileHandle = await folderHandle.getFileHandle(fileName, { create: true });
+      const writableStream = await fileHandle.createWritable();
+
+      // Write the content to the file
+      await writableStream.write(content);
+
+      // Close the writable stream to finalize the changes
+      await writableStream.close();
+    } catch (error) {
+      console.error("Error saving the file in folder:", error);
     }
   }
 
@@ -81,6 +97,18 @@ export class FileManager {
     });
 
     return Promise.all(mems);
+  }
+
+  static async removeFilesInFolder(folderHandle: FileSystemDirectoryHandle) {
+    try {
+      for await (const [name, handle] of (folderHandle as any).entries()) {
+        if (handle.kind === "file") {
+          await handle.remove(); // Remove the file
+        }
+      }
+    } catch (error) {
+      console.error("Error removing files in folder:", error);
+    }
   }
 
   static async navigateToSubfolders(directoryHandle: FileSystemDirectoryHandle, subfolderNames: string[]): Promise<FileSystemDirectoryHandle | null> {

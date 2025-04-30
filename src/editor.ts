@@ -12,6 +12,7 @@ type TrackElement = {
     name: string;
     file: File;
   };
+  fileChanged?: boolean;
 };
 
 @customElement("mui-editor")
@@ -68,6 +69,25 @@ export class MuiEditor extends MUIComponent {
     // Also open file
     FileManager.saveFile(this.memory01Handle, xmlString);
     FileManager.saveFile(this.memory02Handle, xmlString);
+
+    // Save or remove track files if they have changed
+    this.tracks.forEach(async (track, index) => {
+      if (!track.fileChanged || !this.directoryHandle) return;
+
+      if (!track.file) {
+        // Remove the first file in the folder
+        const folderHandle = await FileManager.navigateToSubfolders(this.directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);
+        if (!folderHandle) return;
+        await FileManager.removeFilesInFolder(folderHandle);
+      }
+
+      if (track.file) {
+        // Save the file in the folder
+        const folderHandle = await FileManager.navigateToSubfolders(this.directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);
+        if (!folderHandle) return;
+        await FileManager.saveFileInFolder(folderHandle, track.file.name, track.file.file);
+      }
+    });
   };
 
   onNameChange = (event: Event, track: TrackElement) => {
@@ -84,11 +104,6 @@ export class MuiEditor extends MUIComponent {
   };
 
   onFileChange = async (event: Event) => {
-    if (!this.directoryHandle) {
-      console.error("No directory handle available.");
-      return;
-    }
-
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (!file) {
@@ -97,70 +112,17 @@ export class MuiEditor extends MUIComponent {
     }
 
     const index = parseInt(target.id.split("-")[1]);
-    const folderHandle = await FileManager.navigateToSubfolders(this.directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);
 
-    if (!folderHandle) {
-      console.error("Failed to navigate to subfolders.");
-      return;
-    }
-
-    // Remove any old files in the folder
-    this.onRemoveFile(this.tracks[index], index);
-
-    const fileHandle = await folderHandle.getFileHandle(file.name, { create: true });
-    const writableStream = await fileHandle.createWritable();
-    await writableStream.write(file);
-    await writableStream.close();
-
-    // Update the mems array with the new file information
+    this.tracks[index].fileChanged = true;
     this.tracks[index].file = { name: file.name, file: file };
-    this.requestUpdate("mems");
+    this.requestUpdate("tracks");
   };
 
-  onRemoveFile = async (mem: TrackElement, index: number) => {
-    if (!this.directoryHandle) return;
-
-    const folderHandle = await FileManager.navigateToSubfolders(this.directoryHandle, [`wave`, `${padNumber(index + 1)}_1`]);
-    if (!folderHandle || !mem.file) return;
-    folderHandle.removeEntry(mem.file.name, { recursive: false });
+  onRemoveFile = async (index: number) => {
+    this.tracks[index].fileChanged = true;
     this.tracks[index].file = undefined;
-
-    // Clear the file input
-    if (this.shadowRoot) {
-      const fileInput = this.shadowRoot.getElementById(`file-${index}`) as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = "";
-      }
-    }
-    this.requestUpdate("mems");
+    this.requestUpdate("tracks");
   };
-
-  renderInput(mem: TrackElement, index: number) {
-    const name = xmlNameToString(mem.element.firstElementChild);
-    return html`
-      <div class="inputContainer">
-        <custom-input id="mem-${index}" value="${name}" @input="${(e: Event) => this.onNameChange(e, mem)}"></custom-input>
-        <div class="dropZoneContainer">
-          <label for="file-${index}">${mem.file ? mem.file.name : ""}</label>
-          <input id="file-${index}" type="file" @change="${this.onFileChange}" @drop=${this.onDrop} />
-        </div>
-        <button @click=${() => this.onRemoveFile(mem, index)}>Remove</button>
-      </div>
-    `;
-  }
-
-  renderInputs() {
-    if (!this.tracks || this.tracks.length === 0) {
-      return html`<p>No memory elements available.</p>`;
-    }
-    return html`
-      ${repeat(
-        this.tracks,
-        (mem) => mem.element.getAttribute("id"),
-        (mem, index) => this.renderInput(mem, index)
-      )}
-    `;
-  }
 
   onDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -177,6 +139,33 @@ export class MuiEditor extends MUIComponent {
     target.files = dataTransfer.files;
     this.onFileChange(e);
   };
+
+  renderInput(mem: TrackElement, index: number) {
+    const name = xmlNameToString(mem.element.firstElementChild);
+    return html`
+      <div class="inputContainer">
+        <custom-input id="mem-${index}" value="${name}" @input="${(e: Event) => this.onNameChange(e, mem)}"></custom-input>
+        <div class="dropZoneContainer">
+          <label for="file-${index}">${mem.file ? mem.file.name : ""}</label>
+          <input id="file-${index}" type="file" @change="${this.onFileChange}" @drop=${this.onDrop} />
+        </div>
+        <button @click=${() => this.onRemoveFile(index)}>Remove</button>
+      </div>
+    `;
+  }
+
+  renderInputs() {
+    if (!this.tracks || this.tracks.length === 0) {
+      return html`<p>No memory elements available.</p>`;
+    }
+    return html`
+      ${repeat(
+        this.tracks,
+        (track) => track.element.getAttribute("id"),
+        (track, index) => this.renderInput(track, index)
+      )}
+    `;
+  }
 
   // Render method to define the component's HTML structure
   render() {

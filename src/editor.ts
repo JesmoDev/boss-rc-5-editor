@@ -174,8 +174,10 @@ export class MuiEditor extends MUIComponent {
     }
 
     return html`
-      ${this.renderInputs()}
-      <button @click="${this.onSave}">Save</button>
+      <div id="main">
+        <div id="tracks">${this.renderInputs()}</div>
+        <button @click="${this.onSave}">Save</button>
+      </div>
     `;
   }
 
@@ -184,10 +186,24 @@ export class MuiEditor extends MUIComponent {
     :host {
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      padding: 32px;
       width: 100%;
       height: 100%;
+    }
+    #main {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 16px;
+      width: 100%;
+      height: 100%;
+    }
+    #tracks {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
     }
     .inputContainer {
       display: flex;

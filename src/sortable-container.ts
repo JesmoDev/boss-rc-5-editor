@@ -16,6 +16,8 @@ export class SortableContainer extends LitElement {
   // `;
 
   private dragSrcEl: HTMLElement | null = null;
+  private startIndex: number | null = null;
+  private endIndex: number | null = null;
 
   firstUpdated() {
     this.addDragAndDropHandlers();
@@ -54,11 +56,21 @@ export class SortableContainer extends LitElement {
         item.style.zIndex = "1000";
         item.setAttribute("dragging", "");
         e.dataTransfer?.setData("text/plain", "");
+        this.startIndex = Array.from(this.items).indexOf(item);
       });
 
       item.addEventListener("dragend", () => {
         item.removeAttribute("dragging");
         item.style.zIndex = "";
+        this.dragSrcEl = null;
+        this.endIndex = Array.from(this.items).indexOf(item);
+
+        if (this.startIndex !== null && this.endIndex !== null && this.startIndex !== this.endIndex) {
+          const event = new CustomEvent("change", {
+            detail: { startIndex: this.startIndex, endIndex: this.endIndex },
+          });
+          this.dispatchEvent(event);
+        }
       });
 
       item.addEventListener("dragover", (e: DragEvent) => {

@@ -56,6 +56,16 @@ export class MuiEditor extends MUIComponent {
     this.xmlDoc?.documentElement.querySelectorAll("parsererror").forEach((error) => {
       error.parentNode?.removeChild(error);
     });
+
+    // Run over all mem elements and update their id to the correct one
+    const mems = this.xmlDoc?.querySelectorAll("mem");
+    if (!mems) return;
+    mems.forEach((mem, index) => {
+      const id = mem.getAttribute("id");
+      if (!id) return;
+      mem.setAttribute("id", index.toString());
+    });
+
     const serializer = new XMLSerializer();
     const xmlString = serializer.serializeToString(this.xmlDoc);
 
@@ -67,17 +77,14 @@ export class MuiEditor extends MUIComponent {
     this.tracks.forEach(async (track, index) => {
       if (!track.fileChanged || !this.mainDirectory) return;
 
-      if (!track.file) {
-        // Remove the first file in the folder
-        const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
-        if (!folderHandle) return;
-        await FileManager.removeFilesInFolder(folderHandle);
-      }
+      console.log("Saving track file:", track.file, "for track", index);
+
+      const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
+      if (!folderHandle) return;
+
+      await FileManager.removeFilesInFolder(folderHandle);
 
       if (track.file) {
-        // Save the file in the folder
-        const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
-        if (!folderHandle) return;
         await FileManager.saveFileInFolder(folderHandle, track.file.name, track.file.file);
       }
     });
@@ -132,6 +139,38 @@ export class MuiEditor extends MUIComponent {
     this.onFileChange(e);
   };
 
+  onReorder = (e: CustomEvent) => {
+    const { startIndex, endIndex } = e.detail;
+    if (startIndex === undefined || endIndex === undefined) return;
+
+    // update the tracks array based on the drag-and-drop operation
+    if (startIndex === endIndex) return; // No change in order
+    if (startIndex < 0 || endIndex < 0 || startIndex >= this.tracks.length || endIndex >= this.tracks.length) return; // Invalid indices
+    if (startIndex === undefined || endIndex === undefined) return; // Invalid indices
+
+    const items = [...this.tracks];
+    const [movedItem] = items.splice(startIndex, 1); // Remove the item from the start index
+    items.splice(endIndex, 0, movedItem); // Insert it at the end index
+    this.tracks = items; // Update the tracks array
+
+    // Update the XML document with the new order
+    let mems = this.xmlDoc?.querySelectorAll("mem");
+    if (!mems) return;
+    const mem = mems[startIndex];
+    const newMem = mems[endIndex];
+    const parent = mem.parentNode;
+    if (!parent) return;
+    parent.insertBefore(newMem, mem); // Move the mem element to the new position
+
+    const start = Math.min(startIndex, endIndex);
+    const end = Math.max(startIndex, endIndex);
+    for (let i = start; i <= end; i++) {
+      this.tracks[i].fileChanged = true;
+    }
+
+    this.requestUpdate("tracks");
+  };
+
   renderInput(track: Track, index: number) {
     const name = xmlNameToString(track.element.firstElementChild);
     return html`
@@ -151,7 +190,7 @@ export class MuiEditor extends MUIComponent {
       return html`<p>No memory elements available.</p>`;
     }
     return html`
-      <sortable-container>
+      <sortable-container @change="${this.onReorder}">
         ${repeat(
           this.tracks,
           (track) => track.element.getAttribute("id"),
@@ -163,14 +202,6 @@ export class MuiEditor extends MUIComponent {
 
   // Render method to define the component's HTML structure
   render() {
-    // return html`
-    //   <sortable-container>
-    //     <sortable-item>One</sortable-item>
-    //     <sortable-item>Two</sortable-item>
-    //     <sortable-item>Three</sortable-item>
-    //     ${Array.from({ length: 96 }, (_, i) => html`<sortable-item>${i + 4}</sortable-item>`)}
-    //   </sortable-container>
-    // `;
     if (!this.mainDirectory) {
       return html`<button @click="${this.onOpenFolder}">Open Roland Folder</button>`;
     }

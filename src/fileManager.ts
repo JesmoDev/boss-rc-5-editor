@@ -61,13 +61,14 @@ export class FileManager {
   }
 
   static async saveFileInFolder(folderHandle: FileSystemDirectoryHandle, fileName: string, content: File) {
+    console.log("Saving file:", fileName, "in folder:", folderHandle.name);
     try {
       // Create a writable stream to the new file
       const fileHandle = await folderHandle.getFileHandle(fileName, { create: true });
       const writableStream = await fileHandle.createWritable();
 
       // Write the content to the file
-      await writableStream.write(content);
+      await writableStream.write({ type: "write", data: content });
 
       // Close the writable stream to finalize the changes
       await writableStream.close();
@@ -86,12 +87,15 @@ export class FileManager {
         return { element: mem };
       }
 
-      const file = (await (fileFolderHandle as any).values().next()).value as File;
+      const fileHandle = (await (fileFolderHandle as any).values().next()).value as FileSystemFileHandle;
+      const file = await fileHandle?.getFile(); // Get the file from the handle
+
+      console.log("File handle:", fileHandle, "File:", file);
 
       // Fill out the file object with the name and the actual file
       return {
         element: mem,
-        file: file ? { name: file.name, file: file } : undefined,
+        file: fileHandle ? { name: fileHandle.name, file: file } : undefined,
       };
     });
 

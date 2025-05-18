@@ -77,12 +77,29 @@ export class MuiEditor extends MUIComponent {
     this.tracks.forEach(async (track, index) => {
       if (!track.fileChanged || !this.mainDirectory) return;
 
-      console.log("Saving track file:", track.file, "for track", index);
+      if (track.file) {
+        const file = track.file.file as File;
+        const arrayBuffer = await file.arrayBuffer();
+        const fileClone = new File([arrayBuffer], file.name, {
+          type: file.type,
+          lastModified: file.lastModified,
+        });
+
+        track.file = { name: fileClone.name, file: fileClone };
+      }
 
       const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
       if (!folderHandle) return;
 
       await FileManager.removeFilesInFolder(folderHandle);
+    });
+
+    // add files
+    this.tracks.forEach(async (track, index) => {
+      if (!track.fileChanged || !this.mainDirectory) return;
+
+      const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
+      if (!folderHandle) return;
 
       if (track.file) {
         await FileManager.saveFileInFolder(folderHandle, track.file.name, track.file.file);

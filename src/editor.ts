@@ -47,7 +47,7 @@ export class MuiEditor extends MUIComponent {
     }
   };
 
-  onSave = () => {
+  onSave = async () => {
     if (!this.memory01Handle || !this.xmlDoc || !this.memory02Handle) {
       console.error("No file handle or XML document available for saving.");
       return;
@@ -74,37 +74,41 @@ export class MuiEditor extends MUIComponent {
     FileManager.saveFile(this.memory02Handle, xmlString);
 
     // Save or remove track files if they have changed
-    this.tracks.forEach(async (track, index) => {
-      if (!track.fileChanged || !this.mainDirectory) return;
+    await Promise.all(
+      this.tracks.map(async (track, index) => {
+        if (!track.fileChanged || !this.mainDirectory) return;
 
-      if (track.file) {
-        const file = track.file.file as File;
-        const arrayBuffer = await file.arrayBuffer();
-        const fileClone = new File([arrayBuffer], file.name, {
-          type: file.type,
-          lastModified: file.lastModified,
-        });
+        if (track.file) {
+          const file = track.file.file as File;
+          const arrayBuffer = await file.arrayBuffer();
+          const fileClone = new File([arrayBuffer], file.name, {
+            type: file.type,
+            lastModified: file.lastModified,
+          });
 
-        track.file = { name: fileClone.name, file: fileClone };
-      }
+          track.file = { name: fileClone.name, file: fileClone };
+        }
 
-      const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
-      if (!folderHandle) return;
+        const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
+        if (!folderHandle) return;
 
-      await FileManager.removeFilesInFolder(folderHandle);
-    });
+        await FileManager.removeFilesInFolder(folderHandle);
+      })
+    );
 
     // add files
-    this.tracks.forEach(async (track, index) => {
-      if (!track.fileChanged || !this.mainDirectory) return;
+    await Promise.all(
+      this.tracks.map(async (track, index) => {
+        if (!track.fileChanged || !this.mainDirectory) return;
 
-      const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
-      if (!folderHandle) return;
+        const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
+        if (!folderHandle) return;
 
-      if (track.file) {
-        await FileManager.saveFileInFolder(folderHandle, track.file.name, track.file.file);
-      }
-    });
+        if (track.file) {
+          await FileManager.saveFileInFolder(folderHandle, track.file.name, track.file.file);
+        }
+      })
+    );
   };
 
   onNameChange = (event: Event, track: Track) => {

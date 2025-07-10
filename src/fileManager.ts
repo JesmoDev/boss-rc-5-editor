@@ -5,6 +5,9 @@ import { padNumber } from "./utils";
 declare global {
   interface Window {
     showDirectoryPicker: () => Promise<FileSystemDirectoryHandle>;
+    FileSystemFileHandle: {
+      move: (newName: string) => Promise<FileSystemFileHandle>;
+    };
   }
 }
 
@@ -61,7 +64,6 @@ export class FileManager {
   }
 
   static async saveFileInFolder(folderHandle: FileSystemDirectoryHandle, fileName: string, content: File) {
-    console.log("Saving file:", fileName, "in folder:", folderHandle.name);
     try {
       // Create a writable stream to the new file
       const fileHandle = await folderHandle.getFileHandle(fileName, { create: true });
@@ -88,31 +90,28 @@ export class FileManager {
       }
 
       const fileHandle = (await (fileFolderHandle as any).values().next()).value as FileSystemFileHandle;
-      const file = await fileHandle?.getFile(); // Get the file from the handle
-
-      console.log("File handle:", fileHandle, "File:", file);
 
       // Fill out the file object with the name and the actual file
       return {
         element: mem,
-        file: fileHandle ? { name: fileHandle.name, file: file } : undefined,
+        file: fileHandle ? { name: fileHandle.name, handle: fileHandle } : undefined,
       };
     });
 
     return Promise.all(mems);
   }
 
-  static async removeFilesInFolder(folderHandle: FileSystemDirectoryHandle) {
-    try {
-      for await (const [name, handle] of (folderHandle as any).entries()) {
-        if (handle.kind === "file") {
-          await handle.remove(); // Remove the file
-        }
-      }
-    } catch (error) {
-      console.error("Error removing files in folder:", error);
-    }
-  }
+  // static async removeFilesInFolder(folderHandle: FileSystemDirectoryHandle) {
+  //   try {
+  //     for await (const [name, handle] of (folderHandle as any).entries()) {
+  //       if (handle.kind === "file") {
+  //         await handle.remove(); // Remove the file
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Error removing files in folder:", error);
+  //   }
+  // }
 
   static async navigateToSubfolders(directoryHandle: FileSystemDirectoryHandle, subfolderNames: string[]): Promise<FileSystemDirectoryHandle | null> {
     let currentHandle: FileSystemDirectoryHandle = directoryHandle;
@@ -127,5 +126,13 @@ export class FileManager {
     }
 
     return currentHandle;
+  }
+
+  static async moveFileToFolder(fileHandle: FileSystemFileHandle, folderHandle: FileSystemDirectoryHandle) {
+    await fileHandle.move(folderHandle);
+  }
+
+  static async renameFile(fileHandle: FileSystemFileHandle, newName: string) {
+    await fileHandle.move(newName);
   }
 }

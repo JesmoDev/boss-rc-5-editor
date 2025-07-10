@@ -2,7 +2,8 @@ export type Track = {
   element: Element;
   file?: {
     name: string;
-    file: File;
+    handle?: FileSystemHandle;
+    file?: File;
   };
   fileChanged?: boolean;
 };

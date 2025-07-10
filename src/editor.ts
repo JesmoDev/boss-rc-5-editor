@@ -15,6 +15,7 @@ export class MuiEditor extends MUIComponent {
   @property({ attribute: false }) mainDirectory?: FileSystemDirectoryHandle;
   @property({ attribute: false }) xmlDoc?: Document;
   @property({ attribute: false }) tracks: Track[] = [];
+  @property({ attribute: false }) tracksInitialState: Track[] = [];
 
   onOpenFolder = async () => {
     const { directoryHandle, memory01Handle, memory02Handle, content } = await FileManager.openFile();
@@ -30,6 +31,7 @@ export class MuiEditor extends MUIComponent {
 
     if (!directoryHandle) return;
 
+    this.tracksInitialState = await FileManager.getTracks(this.xmlDoc, directoryHandle);
     this.tracks = await FileManager.getTracks(this.xmlDoc, directoryHandle);
   };
 
@@ -48,10 +50,67 @@ export class MuiEditor extends MUIComponent {
   };
 
   onSave = async () => {
-    if (!this.memory01Handle || !this.xmlDoc || !this.memory02Handle) {
+    if (!this.memory01Handle || !this.xmlDoc || !this.memory02Handle || !this.mainDirectory) {
       console.error("No file handle or XML document available for saving.");
       return;
     }
+
+    const changedTracks = this.tracks.filter((track) => track.fileChanged);
+    const tracksWithRemovedFiles = changedTracks.filter((track) => !track.file?.file);
+    const trackWithAddedFiles = changedTracks.filter((track) => track.file?.file);
+
+    // Figure where the changed tracks have moved compared to the initial state by looking at the track names, return this format {name: string, from: 0, to: 1}
+    const movedTracks2 = changedTracks.reduce((acc, track) => {
+      const initialTrack = this.tracksInitialState.find((t) => t.file);
+      if (!initialTrack) return acc;
+
+      const newIndex = this.tracks.findIndex((t) => t.element.getAttribute("id") === track.element.getAttribute("id"));
+      if (newIndex !== -1 && newIndex !== initialTrack.index) {
+        acc.push({
+          name: track.file?.name ?? "",
+          from: initialTrack.index,
+          to: newIndex,
+        });
+      }
+      return acc;
+    }, [] as { name: string; from: number; to: number }[]);
+
+    return;
+
+    // Only consider tracks that have fileChanged
+    const movedTracks = this.tracksInitialState.reduce((acc, track, index) => {
+      const newIndex = this.tracks.findIndex((t) => t.element.getAttribute("id") === track.element.getAttribute("id"));
+      // Only add if fileChanged is true
+      if (newIndex !== -1 && newIndex !== index && (this.tracks[index]?.fileChanged || this.tracks[newIndex]?.fileChanged)) {
+        acc.push({
+          name: track.file?.name ?? "",
+          from: index,
+          to: newIndex,
+        });
+      }
+      return acc;
+    }, [] as { name: string; from: number; to: number }[]);
+
+    // Move only files that have fileChanged
+    await Promise.all(
+      movedTracks.map(async (track) => {
+        if (!this.mainDirectory) return;
+
+        const fromFolder = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(track.from + 1)}_1`]);
+        const toFolder = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(track.to + 1)}_1`]);
+
+        if (!fromFolder || !toFolder) return;
+
+        const fileHandle = (await fromFolder.getFileHandle(track.name)) as FileSystemFileHandle;
+        if (!fileHandle) return;
+
+        await FileManager.moveFileToFolder(fileHandle, toFolder);
+      })
+    );
+
+    console.log("Moved tracks:", movedTracks);
+
+    return;
 
     this.xmlDoc?.documentElement.querySelectorAll("parsererror").forEach((error) => {
       error.parentNode?.removeChild(error);
@@ -79,14 +138,14 @@ export class MuiEditor extends MUIComponent {
         if (!track.fileChanged || !this.mainDirectory) return;
 
         if (track.file) {
-          const file = track.file.file as File;
+          const file = track.file.handle as File;
           const arrayBuffer = await file.arrayBuffer();
           const fileClone = new File([arrayBuffer], file.name, {
             type: file.type,
             lastModified: file.lastModified,
           });
 
-          track.file = { name: fileClone.name, file: fileClone };
+          track.file = { name: fileClone.name, handle: fileClone };
         }
 
         const folderHandle = await FileManager.navigateToSubfolders(this.mainDirectory, [`wave`, `${padNumber(index + 1)}_1`]);
@@ -105,7 +164,7 @@ export class MuiEditor extends MUIComponent {
         if (!folderHandle) return;
 
         if (track.file) {
-          await FileManager.saveFileInFolder(folderHandle, track.file.name, track.file.file);
+          await FileManager.saveFileInFolder(folderHandle, track.file.name, track.file.handle);
         }
       })
     );
